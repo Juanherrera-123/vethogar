@@ -8,15 +8,14 @@ const Header = () => {
     <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
       <Container>
         <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center py-1">
             <Image
-              src="/logo-vethogar.png"
+              src="/logovethogar.png"
               alt="VetHogar"
-              width={40}
-              height={40}
-              className="h-10 w-10"
+              width={160}
+              height={48}
+              className="h-12 w-auto"
             />
-            <span className="text-lg font-semibold text-slate-900">VetHogar</span>
           </Link>
           <nav className="flex flex-col gap-3 text-sm text-slate-600 md:flex-row md:items-center md:gap-6">
             <Link href="/search" className="transition hover:text-slate-900">
