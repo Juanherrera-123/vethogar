@@ -24,10 +24,9 @@ const HeroSearch = () => {
 
   return (
     <section
-      className="relative overflow-hidden bg-slate-50 bg-cover bg-center py-16 sm:py-20"
+      className="relative flex min-h-[calc(100vh-var(--header-height,0px))] items-center overflow-hidden bg-slate-50 bg-cover bg-center py-16 sm:py-20"
       style={{ backgroundImage: "url('/hero-bg.png')" }}
     >
-      <div className="absolute inset-0 bg-white/70" aria-hidden="true" />
       <Container className="relative">
         <div className="grid gap-10 md:grid-cols-2">
           <div className="flex flex-col justify-center gap-6">
