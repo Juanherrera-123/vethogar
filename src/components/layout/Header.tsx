@@ -1,11 +1,39 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 
 import Container from "./Container";
 
 const Header = () => {
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (!headerRef.current) {
+        return;
+      }
+
+      document.documentElement.style.setProperty(
+        "--header-height",
+        `${headerRef.current.offsetHeight}px`,
+      );
+    };
+
+    updateHeaderHeight();
+    window.addEventListener("resize", updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateHeaderHeight);
+    };
+  }, []);
+
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur"
+    >
       <Container>
         <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <Link href="/" className="flex items-center py-1">
