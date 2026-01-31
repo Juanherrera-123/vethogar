@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, ClipboardList, FileText, MapPin, Shield, Upload, User } from "lucide-react";
+import { Building2, ClipboardList, FileText, Shield, Upload, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
@@ -424,7 +424,7 @@ export default function SoyVeterinarioPage() {
                 <section>
                   <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-white" />
+                      <Shield className="w-5 h-5 text-white" />
                     </div>
                     Ubicacion de servicios
                   </h2>
