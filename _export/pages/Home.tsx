@@ -1,20 +1,14 @@
-"use client";
-
-import { motion } from "framer-motion";
+import { motion } from 'motion/react';
 import { Shield, MessageCircle, Star, UserPlus, CheckCircle, ArrowRight, Quote } from 'lucide-react';
-import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
-import { SearchBar } from '@/components/SearchBar';
-import { useRouter } from 'next/navigation';
+import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { SearchBar } from '../components/SearchBar';
+import { useNavigate } from 'react-router-dom';
 
-export default function HomePage() {
-  const router = useRouter();
+export function Home() {
+  const navigate = useNavigate();
 
   const handleSearch = (city: string, specialty: string) => {
-    const params = new URLSearchParams();
-    if (city) params.set("city", city);
-    if (specialty) params.set("specialty", specialty);
-    const query = params.toString();
-    router.push(`/directorio${query ? `?${query}` : ""}`);
+    navigate(`/directorio?city=${city}&specialty=${specialty}`);
   };
 
   const trustIndicators = [
@@ -156,7 +150,7 @@ export default function HomePage() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => router.push('/soy-veterinario')}
+                  onClick={() => navigate('/soy-veterinario')}
                   className="bg-white/70 backdrop-blur-sm border-2 border-purple-200 text-gray-900 font-semibold py-3.5 px-7 rounded-full transition-all duration-300 hover:bg-white hover:border-purple-300 inline-flex items-center justify-center gap-2 text-base"
                 >
                   Soy Veterinario
@@ -553,7 +547,7 @@ export default function HomePage() {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => router.push('/soy-veterinario')}
+                    onClick={() => navigate('/soy-veterinario')}
                     className="bg-gradient-to-r from-[#7C3AED] to-[#4C1D95] text-white font-bold py-5 px-10 rounded-full transition-all duration-300 shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/40 inline-flex items-center gap-3 text-lg"
                   >
                     <UserPlus className="w-6 h-6" />
