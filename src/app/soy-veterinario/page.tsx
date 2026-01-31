@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, ClipboardList, FileText, Shield, Upload, User } from "lucide-react";
+import { Building2, ClipboardList, FileText, MapPin, Shield, Upload, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
