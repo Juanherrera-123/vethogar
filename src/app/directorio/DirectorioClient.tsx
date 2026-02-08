@@ -17,6 +17,7 @@ interface Veterinarian {
   reviews: number;
   verified: boolean;
   experience: string;
+  consultationPrice: string;
   image: string;
 }
 
@@ -71,6 +72,7 @@ export default function DirectorioClient() {
       reviews: 127,
       verified: true,
       experience: "15 años",
+      consultationPrice: "$120.000",
       image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400",
     },
     {
@@ -84,6 +86,7 @@ export default function DirectorioClient() {
       reviews: 98,
       verified: true,
       experience: "10 años",
+      consultationPrice: "$110.000",
       image: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400",
     },
     {
@@ -97,6 +100,7 @@ export default function DirectorioClient() {
       reviews: 156,
       verified: true,
       experience: "12 años",
+      consultationPrice: "$95.000",
       image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400",
     },
     {
@@ -110,6 +114,7 @@ export default function DirectorioClient() {
       reviews: 203,
       verified: true,
       experience: "18 años",
+      consultationPrice: "$140.000",
       image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400",
     },
     {
@@ -123,6 +128,7 @@ export default function DirectorioClient() {
       reviews: 89,
       verified: true,
       experience: "14 años",
+      consultationPrice: "$130.000",
       image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400",
     },
     {
@@ -136,6 +142,7 @@ export default function DirectorioClient() {
       reviews: 142,
       verified: true,
       experience: "11 años",
+      consultationPrice: "$115.000",
       image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400",
     },
   ];
@@ -261,7 +268,16 @@ export default function DirectorioClient() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
-              className="bg-white/70 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/50"
+              onClick={() => router.push(`/veterinario/${vet.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  router.push(`/veterinario/${vet.id}`);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              className="group bg-white/70 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/50 cursor-pointer transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-purple-200"
             >
               <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_auto] gap-6 items-center">
                 <ImageWithFallback
@@ -271,14 +287,19 @@ export default function DirectorioClient() {
                 />
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-gray-900">{vet.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 transition group-hover:text-purple-700">{vet.name}</h3>
                     {vet.verified && (
                       <span className="text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full flex items-center gap-1">
                         <CheckCircle className="w-4 h-4" /> Verificado
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-600 mb-2">{vet.specialty}</p>
+                  <div className="mb-2 flex items-center gap-3">
+                    <p className="text-gray-600">{vet.specialty}</p>
+                    <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                      Consulta {vet.consultationPrice}
+                    </span>
+                  </div>
                   <p className="text-gray-500 text-sm flex items-center gap-2">
                     <MapPin className="w-4 h-4" /> {vet.city}
                   </p>
@@ -289,19 +310,28 @@ export default function DirectorioClient() {
                 </div>
                 <div className="flex flex-col gap-3">
                   <button
-                    onClick={() => handleWhatsAppClick(vet.whatsapp, vet.name)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleWhatsAppClick(vet.whatsapp, vet.name);
+                    }}
                     className="inline-flex items-center justify-center gap-2 bg-emerald-500 text-white font-semibold px-4 py-2 rounded-2xl shadow-lg"
                   >
                     <MessageCircle className="w-4 h-4" /> WhatsApp
                   </button>
                   <button
-                    onClick={() => handleCallClick(vet.phone)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCallClick(vet.phone);
+                    }}
                     className="inline-flex items-center justify-center gap-2 border-2 border-purple-200 text-purple-700 font-semibold px-4 py-2 rounded-2xl"
                   >
                     <Phone className="w-4 h-4" /> Llamar
                   </button>
                   <button
-                    onClick={() => router.push(`/veterinario/${vet.id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(`/veterinario/${vet.id}`);
+                    }}
                     className="inline-flex items-center justify-center gap-2 text-sm text-purple-600 font-semibold"
                   >
                     Ver perfil

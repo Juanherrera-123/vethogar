@@ -13,6 +13,7 @@ const vetData: Record<string, any> = {
     type: 'Especialista',
     specialties: ['Cirugía', 'Traumatología', 'Medicina General'],
     rating: 4.9,
+    consultationCost: "$120.000",
     city: 'Bogotá',
     neighborhood: 'Chapinero',
     verified: true,
@@ -42,6 +43,7 @@ const vetData: Record<string, any> = {
     type: 'Clínica Veterinaria',
     specialties: ['Medicina General', 'Dermatología', 'Cardiología'],
     rating: 4.8,
+    consultationCost: "$130.000",
     city: 'Medellín',
     neighborhood: 'El Poblado',
     verified: true,
@@ -71,6 +73,7 @@ const vetData: Record<string, any> = {
     type: 'Especialista',
     specialties: ['Oftalmología', 'Medicina General'],
     rating: 5.0,
+    consultationCost: "$110.000",
     city: 'Bogotá',
     neighborhood: 'Usaquén',
     verified: true,
@@ -99,6 +102,7 @@ const vetData: Record<string, any> = {
     type: 'Especialista',
     specialties: ['Oftalmología', 'Medicina General'],
     rating: 4.9,
+    consultationCost: "$140.000",
     city: 'Bogotá',
     neighborhood: 'Chapinero',
     verified: true,
@@ -125,6 +129,7 @@ const vetData: Record<string, any> = {
     type: 'Especialista',
     specialties: ['Cardiología', 'Medicina Interna'],
     rating: 4.8,
+    consultationCost: "$125.000",
     city: 'Barranquilla',
     neighborhood: 'El Prado',
     verified: true,
@@ -152,6 +157,7 @@ const vetData: Record<string, any> = {
     type: 'Especialista',
     specialties: ['Odontología', 'Cirugía Oral'],
     rating: 4.9,
+    consultationCost: "$115.000",
     city: 'Medellín',
     neighborhood: 'Laureles',
     verified: true,
@@ -262,8 +268,16 @@ export default function PerfilVeterinarioPage() {
 
                 {/* Info Block */}
                 <div className="flex-1">
-                  <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">{vet.name}</h1>
-                  <p className="text-xl text-gray-600 mb-4 font-medium">{vet.type}</p>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">{vet.name}</h1>
+                      <p className="text-xl text-gray-600 mb-4 font-medium">{vet.type}</p>
+                    </div>
+                    <div className="rounded-2xl border border-purple-200 bg-white/80 px-5 py-4 shadow-lg">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">Valor consulta</p>
+                      <p className="text-3xl font-bold text-gray-900">{vet.consultationCost}</p>
+                    </div>
+                  </div>
                   
                   <div className="flex flex-col sm:flex-row gap-4 mb-4">
                     <div className="flex items-center gap-2">
