@@ -53,8 +53,8 @@ export function SearchBar({ onSearch, className = '', showLabel = false }: Searc
           Comienza tu búsqueda aquí
         </p>
       )}
-      <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-purple-500/10 p-8 md:p-10 border border-white/40">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="rounded-3xl border border-white/40 bg-white/80 p-5 shadow-2xl shadow-purple-500/10 backdrop-blur-2xl sm:p-7 md:p-10">
+        <div className="mb-5 grid grid-cols-1 gap-4 sm:gap-5 md:mb-6 md:grid-cols-2 md:gap-6">
           {/* City Dropdown */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -63,7 +63,7 @@ export function SearchBar({ onSearch, className = '', showLabel = false }: Searc
             <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full px-5 py-4 border-2 border-purple-100 rounded-2xl focus:border-[#7C3AED] focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all text-gray-700 bg-white/50 backdrop-blur-sm"
+              className="w-full rounded-2xl border-2 border-purple-100 bg-white/50 px-4 py-3.5 text-gray-700 backdrop-blur-sm transition-all focus:border-[#7C3AED] focus:outline-none focus:ring-4 focus:ring-purple-100 sm:px-5 sm:py-4"
             >
               <option value="">Selecciona una ciudad</option>
               {cities.map((c) => (
@@ -82,7 +82,7 @@ export function SearchBar({ onSearch, className = '', showLabel = false }: Searc
             <select
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
-              className="w-full px-5 py-4 border-2 border-purple-100 rounded-2xl focus:border-[#7C3AED] focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all text-gray-700 bg-white/50 backdrop-blur-sm"
+              className="w-full rounded-2xl border-2 border-purple-100 bg-white/50 px-4 py-3.5 text-gray-700 backdrop-blur-sm transition-all focus:border-[#7C3AED] focus:outline-none focus:ring-4 focus:ring-purple-100 sm:px-5 sm:py-4"
             >
               <option value="">Selecciona una especialidad</option>
               {specialties.map((s) => (
@@ -97,10 +97,10 @@ export function SearchBar({ onSearch, className = '', showLabel = false }: Searc
         {/* Search Button */}
         <button
           onClick={handleSearch}
-          className="w-full bg-gradient-to-r from-[#7C3AED] to-[#4C1D95] hover:from-[#6D28D9] hover:to-[#3B0F87] text-white font-semibold py-5 px-8 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/40 transform hover:scale-[1.02]"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#4C1D95] px-6 py-4 font-semibold text-white shadow-xl shadow-purple-500/30 transition-all duration-300 hover:scale-[1.02] hover:from-[#6D28D9] hover:to-[#3B0F87] hover:shadow-2xl hover:shadow-purple-500/40 sm:gap-3 sm:px-8 sm:py-5"
         >
-          <Search className="w-6 h-6" />
-          <span className="text-lg">Buscar</span>
+          <Search className="h-5 w-5 sm:h-6 sm:w-6" />
+          <span className="text-base sm:text-lg">Buscar</span>
         </button>
       </div>
     </div>

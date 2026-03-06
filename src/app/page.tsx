@@ -1,13 +1,54 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, MessageCircle, Star, UserPlus, CheckCircle, ArrowRight, Quote } from 'lucide-react';
+import { Shield, MessageCircle, Star, UserPlus, CheckCircle, ArrowRight, Quote, MapPin, Stethoscope } from "lucide-react";
 import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 import { SearchBar } from '@/components/SearchBar';
 import { useRouter } from 'next/navigation';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
+import { supabase } from "@/lib/supabase/client";
+
+interface FeaturedDirectoryProfileRow {
+  id: string;
+  display_name: string;
+  specialty: string;
+  city: string;
+  experience?: string | null;
+  rating?: number | null;
+  reviews?: number | null;
+  consultation_price?: string | null;
+  image_url?: string | null;
+}
+
+interface FeaturedDirectoryProfile {
+  id: string;
+  name: string;
+  specialty: string;
+  city: string;
+  experience: string;
+  rating: number;
+  reviews: number;
+  consultationPrice: string;
+  image: string;
+}
+
+interface ReviewSummaryResponse {
+  summaries?: Record<string, { averageRating: number; reviewCount: number }>;
+}
 
 export default function HomePage() {
   const router = useRouter();
+  const [featuredProfiles, setFeaturedProfiles] = useState<FeaturedDirectoryProfile[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredCarouselApi, setFeaturedCarouselApi] = useState<CarouselApi>();
 
   const handleSearch = (city: string, specialty: string) => {
     const params = new URLSearchParams();
@@ -16,6 +57,119 @@ export default function HomePage() {
     const query = params.toString();
     router.push(`/directorio${query ? `?${query}` : ""}`);
   };
+
+  const formatConsultationPrice = (rawValue?: string | null) => {
+    const digits = (rawValue ?? "").replace(/\D/g, "");
+    if (!digits) return "Consultar";
+    const amount = Number.parseInt(digits, 10);
+    if (!Number.isFinite(amount)) return "Consultar";
+    return `Desde $${amount.toLocaleString("es-CO")}`;
+  };
+
+  const parseExperienceYears = (value: string | null | undefined) => {
+    if (!value) return 0;
+    const match = value.match(/\d+/);
+    if (!match) return 0;
+    const parsed = Number.parseInt(match[0], 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const formatExperienceLabel = (value: string | null | undefined) => {
+    const years = parseExperienceYears(value);
+    if (years <= 0) return "";
+    return `${years} años exp`;
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadFeaturedProfiles = async () => {
+      setFeaturedLoading(true);
+      const { data, error } = await supabase
+        .from("directory_profiles")
+        .select(
+          "id,display_name,specialty,city,experience,rating,reviews,consultation_price,image_url,verified",
+        )
+        .eq("verified", true)
+        .order("rating", { ascending: false })
+        .order("reviews", { ascending: false })
+        .limit(12);
+
+      if (!isMounted) return;
+
+      if (error) {
+        setFeaturedProfiles([]);
+        setFeaturedLoading(false);
+        return;
+      }
+
+      const rows = (data ?? []) as unknown as FeaturedDirectoryProfileRow[];
+      const mapped = rows.map((row) => ({
+        id: row.id,
+        name: row.display_name || "Veterinario",
+        specialty: row.specialty || "Medicina general",
+        city: row.city || "Colombia",
+        experience: row.experience ?? "",
+        rating: row.rating ?? 0,
+        reviews: row.reviews ?? 0,
+        consultationPrice: formatConsultationPrice(row.consultation_price),
+        image:
+          row.image_url ||
+          "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600",
+      }));
+
+      let reviewSummaries: Record<string, { averageRating: number; reviewCount: number }> = {};
+      if (rows.length > 0) {
+        try {
+          const summaryResponse = await fetch("/api/reviews/summary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profileIds: rows.map((row) => row.id) }),
+          });
+          if (summaryResponse.ok) {
+            const summaryPayload = (await summaryResponse.json()) as ReviewSummaryResponse;
+            reviewSummaries = summaryPayload.summaries ?? {};
+          }
+        } catch {
+          reviewSummaries = {};
+        }
+      }
+
+      const mappedWithLiveReviews = mapped.map((item) => {
+        const summary = reviewSummaries[item.id];
+        if (!summary) return item;
+        return {
+          ...item,
+          rating: summary.averageRating,
+          reviews: summary.reviewCount,
+        };
+      });
+
+      setFeaturedProfiles(mappedWithLiveReviews);
+      setFeaturedLoading(false);
+    };
+
+    loadFeaturedProfiles();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!featuredCarouselApi) return;
+    if (featuredProfiles.length <= 4) return;
+
+    const interval = window.setInterval(() => {
+      if (featuredCarouselApi.canScrollNext()) {
+        featuredCarouselApi.scrollNext();
+      } else {
+        featuredCarouselApi.scrollTo(0);
+      }
+    }, 2600);
+
+    return () => window.clearInterval(interval);
+  }, [featuredCarouselApi, featuredProfiles.length]);
 
   const trustIndicators = [
     {
@@ -75,7 +229,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 via-pink-50 to-blue-50">
       {/* Hero Section - Two Column Layout */}
-      <section className="relative min-h-screen flex items-center pt-32 pb-20 overflow-hidden">
+      <section className="relative flex min-h-screen items-center overflow-hidden pb-14 pt-28 sm:pt-32 md:pb-20">
         {/* Animated Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 via-pink-100/30 to-blue-100/50">
           {/* Floating Gradient Orbs */}
@@ -91,7 +245,7 @@ export default function HomePage() {
               repeat: Infinity,
               ease: "easeInOut"
             }}
-            className="absolute top-20 right-1/4 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"
+            className="absolute right-1/4 top-16 h-72 w-72 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-3xl md:top-20 md:h-96 md:w-96"
           />
           <motion.div
             animate={{
@@ -105,36 +259,36 @@ export default function HomePage() {
               repeat: Infinity,
               ease: "easeInOut"
             }}
-            className="absolute bottom-40 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-teal-400/20 rounded-full blur-3xl"
+            className="absolute bottom-28 left-1/4 h-72 w-72 rounded-full bg-gradient-to-br from-blue-400/20 to-teal-400/20 blur-3xl md:bottom-40 md:h-96 md:w-96"
           />
         </div>
 
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+        <div className="container relative z-10 mx-auto px-4 sm:px-6">
+          <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12">
             {/* Left Column - Text Content */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
-              className="space-y-8"
+              className="space-y-6 md:space-y-8"
             >
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               >
-                <span className="inline-block text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent uppercase tracking-wider mb-6">
+                <span className="mb-4 inline-block bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-sm font-semibold uppercase tracking-wider text-transparent md:mb-6">
                   — Para Dueños de Mascotas
                 </span>
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-[1.1]">
-                  Encuentra al{' '}
+                <h1 className="mb-5 text-4xl font-bold leading-[1.1] text-gray-900 sm:text-5xl md:mb-6 md:text-6xl lg:text-7xl">
+                  Encuentra a tu{" "}
                   <span className="bg-gradient-to-r from-[#7C3AED] to-[#EC4899] bg-clip-text text-transparent">
-                    especialista
-                  </span>
-                  {' '}ideal.
+                    veterinario
+                  </span>{" "}
+                  de confianza.
                 </h1>
-                <p className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-xl">
-                  Conectamos dueños responsables con veterinarios verificados. Sin intermediarios, contacto directo.
+                <p className="max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg md:text-xl">
+                  Hacemos que cuidar a tu mascota sea más fácil y seguro. Por eso te conectamos con tu veterinario ideal.
                 </p>
               </motion.div>
 
@@ -142,13 +296,13 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="flex flex-col sm:flex-row gap-4"
+                className="flex flex-col gap-3 sm:flex-row sm:gap-4"
               >
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => document.getElementById('search-section')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="bg-gradient-to-r from-[#7C3AED] to-[#4C1D95] text-white font-semibold py-3.5 px-7 rounded-full transition-all duration-300 shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/40 inline-flex items-center justify-center gap-2 text-base"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#7C3AED] to-[#4C1D95] px-7 py-3.5 text-base font-semibold text-white shadow-xl shadow-purple-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/40 sm:w-auto"
                 >
                   Buscar Veterinario
                   <ArrowRight className="w-5 h-5" />
@@ -157,7 +311,7 @@ export default function HomePage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => router.push('/soy-veterinario')}
-                  className="bg-white/70 backdrop-blur-sm border-2 border-purple-200 text-gray-900 font-semibold py-3.5 px-7 rounded-full transition-all duration-300 hover:bg-white hover:border-purple-300 inline-flex items-center justify-center gap-2 text-base"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-purple-200 bg-white/70 px-7 py-3.5 text-base font-semibold text-gray-900 transition-all duration-300 hover:border-purple-300 hover:bg-white sm:w-auto"
                 >
                   Soy Veterinario
                 </motion.button>
@@ -168,18 +322,18 @@ export default function HomePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
-                className="flex gap-8 pt-8"
+                className="flex flex-wrap gap-6 pt-6 sm:gap-8 sm:pt-8"
               >
                 <div>
-                  <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">500+</div>
+                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">500+</div>
                   <div className="text-sm text-gray-600 font-medium">Veterinarios</div>
                 </div>
                 <div>
-                  <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">50+</div>
+                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">50+</div>
                   <div className="text-sm text-gray-600 font-medium">Ciudades</div>
                 </div>
                 <div>
-                  <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">4.9★</div>
+                  <div className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">4.9★</div>
                   <div className="text-sm text-gray-600 font-medium">Calificación</div>
                 </div>
               </motion.div>
@@ -190,7 +344,7 @@ export default function HomePage() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="relative hidden lg:block"
+              className="relative mx-auto w-full max-w-sm sm:max-w-md lg:max-w-none"
             >
               <div className="relative">
                 {/* Decorative gradient background for image */}
@@ -209,7 +363,7 @@ export default function HomePage() {
                 <motion.div
                   animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -bottom-6 -left-6 bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-white/50"
+                  className="absolute -bottom-4 -left-3 hidden rounded-2xl border border-white/50 bg-white/90 p-3 shadow-xl backdrop-blur-xl sm:block lg:-bottom-6 lg:-left-6 lg:p-4"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl flex items-center justify-center">
@@ -225,7 +379,7 @@ export default function HomePage() {
                 <motion.div
                   animate={{ y: [0, 10, 0] }}
                   transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -top-6 -right-6 bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-white/50"
+                  className="absolute -right-3 -top-4 hidden rounded-2xl border border-white/50 bg-white/90 p-3 shadow-xl backdrop-blur-xl sm:block lg:-top-6 lg:-right-6 lg:p-4"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center">
@@ -244,7 +398,7 @@ export default function HomePage() {
       </section>
 
       {/* Search Section - Centered */}
-      <section id="search-section" className="relative py-20 bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50">
+      <section id="search-section" className="relative bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50 py-16 md:py-20">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -253,7 +407,7 @@ export default function HomePage() {
             transition={{ duration: 0.8 }}
             className="max-w-4xl mx-auto"
           >
-            <div className="text-center mb-10">
+            <div className="mb-8 text-center md:mb-10">
               <motion.span 
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -262,10 +416,10 @@ export default function HomePage() {
               >
                 Comienza tu búsqueda
               </motion.span>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              <h2 className="mb-4 text-3xl font-bold text-gray-900 sm:text-4xl md:text-5xl">
                 Encuentra el cuidado que necesitas
               </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              <p className="mx-auto max-w-2xl text-base text-gray-600 sm:text-lg md:text-xl">
                 Busca por ciudad y especialidad para encontrar al veterinario perfecto
               </p>
             </div>
@@ -274,24 +428,149 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Trust Indicators Section */}
-      <section className="py-24 bg-gradient-to-b from-pink-50 via-purple-50 to-blue-50 relative">
+      {/* Featured Vets Carousel */}
+      <section className="relative bg-gradient-to-b from-pink-50 via-blue-50 to-purple-50 py-14 md:py-18">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end"
+          >
+            <div>
+              <span className="mb-3 inline-block bg-gradient-to-r from-[#EC4899] via-[#6366F1] to-[#06B6D4] bg-clip-text text-sm font-semibold uppercase tracking-wider text-transparent">
+                Destacados en Vethogar
+              </span>
+              <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+                Veterinarios registrados
+              </h2>
+              <p className="mt-2 text-base text-gray-600">
+                Explora algunas opciones verificadas y conoce sus perfiles.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/directorio")}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#EC4899] to-[#4F46E5] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-400/25 transition hover:-translate-y-0.5"
+            >
+              Ver todo el directorio
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </motion.div>
+
+          {featuredLoading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={`featured-skeleton-${index}`}
+                  className="h-72 animate-pulse rounded-3xl border border-white/60 bg-white/70"
+                />
+              ))}
+            </div>
+          ) : featuredProfiles.length > 0 ? (
+            <Carousel
+              setApi={setFeaturedCarouselApi}
+              opts={{ align: "start", loop: featuredProfiles.length > 4 }}
+              className="relative"
+            >
+              <CarouselContent>
+                {featuredProfiles.map((profile) => (
+                  <CarouselItem
+                    key={profile.id}
+                    className="basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                  >
+                    <motion.button
+                      whileHover={{ y: -6 }}
+                      type="button"
+                      onClick={() => router.push(`/veterinario/${profile.id}`)}
+                      className="group h-full w-full overflow-hidden rounded-3xl border border-white/60 bg-white/75 text-left shadow-xl backdrop-blur-xl transition hover:shadow-2xl"
+                    >
+                      <div className="relative h-44">
+                        <ImageWithFallback
+                          src={profile.image}
+                          alt={profile.name}
+                          className="h-full w-full object-cover object-top"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/25 to-transparent" />
+                        <div className="absolute left-3 top-3 rounded-xl bg-white/90 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow">
+                          {profile.consultationPrice}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 p-4">
+                        <h3 className="line-clamp-1 text-lg font-bold text-gray-900">{profile.name}</h3>
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Stethoscope className="h-4 w-4 text-indigo-600" />
+                          <span className="line-clamp-1">{profile.specialty}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 text-indigo-600" />
+                          <span className="line-clamp-1">
+                            {profile.city}
+                            {formatExperienceLabel(profile.experience)
+                              ? ` · ${formatExperienceLabel(profile.experience)}`
+                              : ""}
+                          </span>
+                        </div>
+                        {profile.reviews > 0 ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-0.5">
+                              {Array.from({ length: 5 }).map((_, index) => (
+                                <Star
+                                  key={`${profile.id}-star-${index}`}
+                                  className={`h-4 w-4 ${
+                                    index < Math.round(profile.rating)
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              {profile.rating.toFixed(1)} ({profile.reviews})
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="h-6" />
+                        )}
+                      </div>
+                    </motion.button>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {featuredProfiles.length > 1 ? (
+                <>
+                  <CarouselPrevious className="-left-2 hidden h-10 w-10 border border-indigo-200 bg-white text-indigo-700 shadow-lg md:flex" />
+                  <CarouselNext className="-right-2 hidden h-10 w-10 border border-indigo-200 bg-white text-indigo-700 shadow-lg md:flex" />
+                </>
+              ) : null}
+            </Carousel>
+          ) : (
+            <div className="rounded-3xl border border-white/60 bg-white/70 px-6 py-8 text-center text-gray-600">
+              Pronto verás aquí veterinarios destacados.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Trust Indicators Section */}
+      <section className="relative bg-gradient-to-b from-pink-50 via-purple-50 to-blue-50 py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-12 text-center md:mb-16"
           >
             <span className="inline-block text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent uppercase tracking-wider mb-4">
               ¿Por qué Vethogar?
             </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900">
+            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl md:text-5xl">
               Tu tranquilidad es nuestra prioridad
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 md:grid-cols-3 md:gap-8">
             {trustIndicators.map((indicator, index) => {
               const Icon = indicator.icon;
               return (
@@ -302,7 +581,7 @@ export default function HomePage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                  className={`relative bg-white/60 backdrop-blur-xl rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/50 overflow-hidden group`}
+                  className={`group relative overflow-hidden rounded-3xl border border-white/50 bg-white/60 p-6 shadow-xl transition-all duration-300 hover:shadow-2xl md:p-8`}
                 >
                   {/* Decorative gradient overlay */}
                   <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${indicator.gradient} opacity-20 rounded-full blur-2xl group-hover:opacity-30 transition-opacity`} />
@@ -310,10 +589,10 @@ export default function HomePage() {
                   <div className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${indicator.gradient} flex items-center justify-center mb-6 shadow-lg`}>
                     <Icon className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                  <h3 className="mb-3 text-xl font-bold text-gray-900 md:text-2xl">
                     {indicator.title}
                   </h3>
-                  <p className="text-gray-700 text-lg leading-relaxed">
+                  <p className="text-base leading-relaxed text-gray-700 md:text-lg">
                     {indicator.description}
                   </p>
                 </motion.div>
@@ -324,7 +603,7 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-24 bg-gradient-to-b from-blue-50 via-pink-50 to-purple-50 relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-pink-50 to-purple-50 py-16 md:py-24">
         {/* Decorative Background */}
         <motion.div
           animate={{
@@ -411,20 +690,20 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="mb-12 text-center md:mb-16"
           >
             <span className="inline-block text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent uppercase tracking-wider mb-4">
               Testimonios
             </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className="mb-4 text-3xl font-bold text-gray-900 sm:text-4xl md:text-5xl">
               Lo que dicen nuestros usuarios
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-base text-gray-600 sm:text-lg md:text-xl">
               Miles de dueños de mascotas han encontrado al veterinario perfecto
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-5 md:grid-cols-3 md:gap-8">
             {testimonials.map((testimonial, index) => (
               <motion.div
                 key={testimonial.name}
@@ -433,7 +712,7 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.15 }}
                 whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                className="relative bg-white/60 backdrop-blur-xl rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-white/50"
+                className="relative rounded-3xl border border-white/50 bg-white/60 p-6 shadow-xl transition-all duration-300 hover:shadow-2xl md:p-8"
               >
                 {/* Quote Icon */}
                 <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -448,7 +727,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Testimonial Text */}
-                <p className="text-gray-700 text-lg leading-relaxed mb-6">
+                <p className="mb-6 text-base leading-relaxed text-gray-700 md:text-lg">
                   "{testimonial.text}"
                 </p>
 
@@ -473,7 +752,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-b from-purple-50 via-pink-50 to-blue-50 relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-b from-purple-50 via-pink-50 to-blue-50 py-14 md:py-16">
         {/* Decorative Elements */}
         <motion.div
           animate={{
@@ -508,10 +787,10 @@ export default function HomePage() {
             transition={{ duration: 0.8 }}
             className="max-w-7xl mx-auto"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-2 lg:gap-8">
               {/* Left Side - Content */}
-              <div className="bg-white/60 backdrop-blur-2xl rounded-3xl p-10 shadow-2xl border border-white/50">
-                <div className="mb-8">
+              <div className="rounded-3xl border border-white/50 bg-white/60 p-6 shadow-2xl backdrop-blur-2xl sm:p-8 md:p-10">
+                <div className="mb-6 md:mb-8">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     whileInView={{ opacity: 1, scale: 1 }}
@@ -523,16 +802,16 @@ export default function HomePage() {
                       💼 Para profesionales
                     </span>
                   </motion.div>
-                  <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                  <h2 className="mb-4 text-3xl font-bold text-gray-900 sm:text-4xl md:text-5xl">
                     ¿Eres veterinario?
                   </h2>
-                  <p className="text-xl text-gray-700 leading-relaxed">
+                  <p className="text-base leading-relaxed text-gray-700 sm:text-lg md:text-xl">
                     Únete a nuestra red de profesionales verificados y conecta con dueños de mascotas que necesitan tus servicios.
                   </p>
                 </div>
 
                 {/* Benefits Grid */}
-                <div className="grid grid-cols-1 gap-4 mb-8">
+                <div className="mb-8 grid grid-cols-1 gap-3 sm:gap-4">
                   {vetBenefits.map((benefit, index) => (
                     <motion.div
                       key={benefit}
@@ -540,10 +819,10 @@ export default function HomePage() {
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-4"
+                      className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 p-3.5 sm:p-4"
                     >
                       <CheckCircle className="w-6 h-6 text-[#10B981] flex-shrink-0" />
-                      <span className="text-lg font-medium text-gray-800">{benefit}</span>
+                      <span className="text-base font-medium text-gray-800 sm:text-lg">{benefit}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -554,7 +833,7 @@ export default function HomePage() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => router.push('/soy-veterinario')}
-                    className="bg-gradient-to-r from-[#7C3AED] to-[#4C1D95] text-white font-bold py-5 px-10 rounded-full transition-all duration-300 shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/40 inline-flex items-center gap-3 text-lg"
+                    className="inline-flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#7C3AED] to-[#4C1D95] px-8 py-4 text-base font-bold text-white shadow-xl shadow-purple-500/30 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/40 sm:w-auto sm:px-10 sm:py-5 sm:text-lg"
                   >
                     <UserPlus className="w-6 h-6" />
                     Crea tu perfil profesional
@@ -568,7 +847,7 @@ export default function HomePage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="relative hidden lg:block"
+                className="relative mx-auto w-full max-w-sm sm:max-w-md lg:max-w-none"
               >
                 <div className="relative">
                   {/* Decorative gradient background for image */}
@@ -587,7 +866,7 @@ export default function HomePage() {
                   <motion.div
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute -bottom-6 -left-6 bg-white/90 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-white/50"
+                    className="absolute -bottom-4 -left-3 hidden rounded-2xl border border-white/50 bg-white/90 p-3 shadow-xl backdrop-blur-xl sm:block lg:-bottom-6 lg:-left-6 lg:p-4"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Lock, LogIn } from "lucide-react";
+import { Mail, Lock, LogIn, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
@@ -10,47 +10,104 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const getAuthErrorMessage = (authError: { message?: string | null }) => {
+    const message = authError?.message?.toLowerCase() ?? "";
+    if (message.includes("invalid login") || message.includes("invalid_credentials")) {
+      return "Correo o contraseña incorrectos.";
+    }
+    if (message.includes("email not confirmed")) {
+      return "Debes confirmar tu correo antes de iniciar sesión.";
+    }
+    if (message.includes("user not found")) {
+      return "No existe una cuenta con ese correo.";
+    }
+    if (message.includes("too many requests")) {
+      return "Demasiados intentos. Espera un momento e intenta de nuevo.";
+    }
+    return "No pudimos iniciar sesión. Verifica tus datos e inténtalo de nuevo.";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     setLoading(false);
 
     if (authError) {
-      setError(authError.message);
+      setError(getAuthErrorMessage(authError));
+      return;
+    }
+
+    const accessToken = data.session?.access_token;
+    if (!accessToken) {
+      setError("No pudimos validar tu sesión. Intenta de nuevo.");
+      return;
+    }
+
+    const roleResponse = await fetch("/api/auth-role", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: "{}",
+    });
+
+    if (!roleResponse.ok) {
+      setError("No pudimos validar tu perfil. Intenta de nuevo.");
+      return;
+    }
+
+    const rolePayload = await roleResponse.json();
+    const role = rolePayload?.role as string | null;
+
+    if (!role) {
+      setError("Tu perfil no tiene un rol asignado. Contacta al administrador.");
+      return;
+    }
+
+    if (role === "master" || role === "admin") {
+      router.push("/admin");
+      return;
+    }
+
+    if (role === "vet" || role === "clinic") {
+      router.push("/soy-veterinario");
       return;
     }
 
     router.push("/directorio");
   };
 
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-pink-50 to-blue-50 pt-32 pb-12 flex items-center justify-center overflow-hidden relative">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-purple-50 via-pink-50 to-blue-50 pb-12 pt-24 sm:pt-32">
       <motion.div
         animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-10 right-20 w-96 h-96 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"
+        className="absolute right-8 top-8 h-72 w-72 rounded-full bg-gradient-to-br from-purple-400/20 to-pink-400/20 blur-3xl sm:right-20 sm:top-10 sm:h-96 sm:w-96"
       />
 
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="w-full max-w-md mx-4 relative z-10"
+        className="relative z-10 mx-4 w-full max-w-md"
       >
-        <div className="bg-white/60 backdrop-blur-xl rounded-[3rem] p-10 shadow-2xl border border-white/50">
-          <div className="text-center mb-8">
+        <div className="rounded-[2rem] border border-white/50 bg-white/60 p-6 shadow-2xl backdrop-blur-xl sm:rounded-[3rem] sm:p-10">
+          <div className="mb-7 text-center sm:mb-8">
             <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <LogIn className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Iniciar Sesión</h1>
+            <h1 className="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Iniciar Sesión</h1>
             <p className="text-gray-600">Accede con tu correo y contraseña</p>
           </div>
 
@@ -75,13 +132,20 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-12 pr-4 py-4 border-2 border-purple-100 rounded-2xl focus:border-[#7C3AED] focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all bg-white/50 backdrop-blur-sm"
+                  className="w-full pl-12 pr-12 py-4 border-2 border-purple-100 rounded-2xl focus:border-[#7C3AED] focus:outline-none focus:ring-4 focus:ring-purple-100 transition-all bg-white/50 backdrop-blur-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -90,7 +154,11 @@ export default function LoginPage() {
                 <input type="checkbox" className="h-4 w-4 rounded border-purple-300" />
                 Recordarme
               </label>
-              <button type="button" className="text-purple-600 hover:text-purple-700 font-semibold">
+              <button
+                type="button"
+                onClick={() => router.push("/forgot-password")}
+                className="text-purple-600 hover:text-purple-700 font-semibold"
+              >
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
@@ -109,6 +177,7 @@ export default function LoginPage() {
               <LogIn className="w-5 h-5" />
               {loading ? "Ingresando..." : "Ingresar"}
             </motion.button>
+
           </form>
         </div>
       </motion.div>
